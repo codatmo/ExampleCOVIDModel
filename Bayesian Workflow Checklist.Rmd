@@ -1,0 +1,16 @@
+---
+title: "Workflow Checklist"
+author: "Breck Baldwin"
+date: "12/4/2020"
+output: html_document
+---
+
+
+# Bayesian Workflow Checklist
+
+1. Cross validation satisfactory
+2. Rhat < 1.1
+3. No divergent transitions
+4. Parameter recovery for X choices
+5. SBC run
+6. Posterior predictive checks
