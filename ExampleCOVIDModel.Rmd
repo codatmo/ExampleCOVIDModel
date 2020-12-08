@@ -4,6 +4,7 @@ author: "Breck Baldwin"
 date: "12/4/2020"
 output: html_document
 ---
+<!--Easiest way to render as html is open this file in RStudio and select 'Knit' option at top of window with this content.-->
 
 ## Authors
 Breck Baldwin, fbb2116@columbia.edu
