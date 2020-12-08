@@ -1,0 +1,55 @@
+---
+title: "Simple Covid Model Description"
+author: "Breck Baldwin"
+date: "12/4/2020"
+output: html_document
+---
+
+## Authors
+Breck Baldwin, fbb2116@columbia.edu
+
+## Simple COVID Model Documentation
+
+This is an example entry for a COVID model in the CoDatMo site.
+
+## Implementation Goals
+
+This model computes from data the hospital admission rate for COVID diagnosed patients given COVID related 111-calls. 111-calls access to governmental services and information in the U.K. The high level goal is to help government predict hospital resource usage with a 20 day lead time. 
+
+## Data Description
+The data is entirly simulated by specifying hospital admissions 20 days later, `cvd_hosp_20_d_y` as a function of 111-calls, `true_coefficient_111_call_count_beta` with an error term `true_std_dev_sigma`. Note that we use descriptive variable names and append the traditional 'statistical' name as a suffix, e.g., _y, _beta and _sigma. This is to help non-statiticians understand what variables actually are while giving the standard statistial names as well.
+```
+
+true_coefficient_111_call_count_beta <- .5 
+true_std_dev_sigma <- 20
+
+cvd_hosp_20_d_y <- rnorm(days_data_n,
+                     true_coefficient_111_call_count_beta * calls_111_x, 
+                     true_std_dev_sigma)
+```
+
+Note the descriptive variable names with the standard 'statistical' convention 
+There is no explicit representation of time, each day is a separate simulation. We will pretend that the data is NOT simulated. 
+
+## Model Description
+
+The model is simple linear regression. Note that the below pulls the actual source from disk. A good way to always have up to date code in the description. 
+
+```{r echo=FALSE}
+cat(paste(readLines('stan/naive_linear_regression.stan'), "\n", sep=""), sep="")
+```
+Note that all parameters have priors although `std_dev_sigma` is not scaled properly. This will be reflected in the results below. 
+
+## Execution
+
+The below 'run.R' generates the simulated data, compiles the Stan model and runs it. Again this is pulled directly from disk and put in this document.
+
+```{r echo=FALSE}
+cat(paste(readLines('run.R'), "\n", sep=""), sep="")
+```
+
+
+## Analysis and Further Discission
+
+Discuss model further here. We would note the poor estimate for `std_dev_sigma` given that we know truth. 
+
