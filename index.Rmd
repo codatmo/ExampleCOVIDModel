@@ -1,7 +1,7 @@
 ---
 title: "Model reproduction checklist"
 author: "Breck Baldwin"
-date: "3/1/2021"
+date: "3/8/2021"
 output: 
   html_document:
     includes:
@@ -14,23 +14,26 @@ This document exists in the repository at [https://github.com/codatmo/model_temp
 
 The goal of this model is to provide a template for reproducing COVID models in the CoDatMo framework. The model presented is a single parameter regression with artificial data. 
 
-### Validation checklist items completed
+### Validation checklist items 
 
-* Model released on github
+* Model released on github: https://github.com/codatmo/model_template
+* Problem description
 * Model description: Research goals, references, supplementary description as necessary.
-* Data description and explicit data munging description.
-* Small data set to validate model execution
-* Divergent transitions report
-* Rhat check
-* Compare marginal posterior densities across chains
-* Posterior predictive check
-* Prior predictive check
-* Simulated data parameter recovery
-* Distribution created and released
-
-### Validation steps planned
-
-* SBC (Simulation Based Calibration)
+* Data
+  + Data generating process
+  + Data munging and examination
+* Stan program
+* Running model
+  + Small data set to validate model execution (not done)
+  + Run on availble data
+  + Examine model output
+* Model validation
+  + Report posterior diagnostics
+  + Prior predictive check parameters/predictions
+  + Parameter recovery with simulated data
+  + Posterior predictive check
+  + Cross validation (not done)
+  + Simulation based calibration (SBC) (not done)
 
 ## Problem description
 
@@ -59,6 +62,7 @@ coordinates(graph) <- list(x=c(x_calls_111=1, y_cvd_hosp=2),
                            y=c(x_calls_111=0, y_cvd_hosp=0))
 plot(graph)
 ```
+
 The above causal graph treats 111 calls as causal for hospital admissions which is certainly incorrect. A more complete causal model would be sensitive to the underlying COVID rate but we are keeping the model simple. 
 
 Below the data are loaded.
@@ -78,7 +82,9 @@ There is no data cleaning or processing. We will graph it however.
 library(ggplot2)
 ggplot(data) + aes(x=x_calls_111,y=y_cvd_hosp) + geom_point()
 ```
+
 The conversion to Stan input given the above data is as follows:
+
 ```{r echo=TRUE, message=FALSE, comment=NA}
 stan_data <- list(N=nrow(data), x_calls_111=data$x_calls_111, y_cvd_hosp=data$y_cvd_hosp,
                   compute_likelihood=1, compute_prediction=1)
@@ -111,6 +117,7 @@ get_data_block <- function(lines) {
   return(data_lines)
 }
 ```
+
 ## Running model
 
 ```{r echo=TRUE, message=FALSE, comment=NA}
@@ -126,8 +133,10 @@ Viewing a text based summary of the fit:
 ```{r}
 fit$cmdstan_summary()
 ```
+
 Viewing the posteriors graphically yeilds:
-```{r}
+
+```{r echo=TRUE}
 library(bayesplot)
 mcmc_hist(fit$draws(variables=c("sigma_sd", "beta_coef_111_call", "alpha_intercept")))
 ```
@@ -169,6 +178,7 @@ fit <- model$sample(data=stan_data, seed=999, chains=4)
 
 mcmc_hist(fit$draws(variables=c("sigma_sd", "beta_coef_111_call", "alpha_intercept")))
 ```
+
 Above we see the posterior of the priors without seeing any data. Generally some justification for prior distributions is expected. The above are weakly informative in that they cover a broad range of plausible values. 
 
 #### Plotting simulations from priors
@@ -193,6 +203,7 @@ p <- ggplot(data=p_long_data, aes(x=x_calls_111)) +
 print(p)
 
 ```
+
 Actual data is plotted as a black line for context. At this point some comforting statements are made that the prior's informativeness is minimal and that Bayes himself would bless the entire effort were he alive to do so. 
 
 ### Parameter recovery with simulated data
@@ -215,6 +226,7 @@ cat(sprintf("\nactual beta_coef_111_call=%.2f",rs_ex$beta_coef_111_call[draw]))
 cat(sprintf("\nactual sigma_sd=%.2f",rs_ex$sigma_sd[draw]))
 
 ```
+
 All the parameters fit within the 2.5% to to 97.5% interval.
 
 ### Posterior predictive check
@@ -243,17 +255,9 @@ p <- ggplot(data=p_long_data, aes(x=x_calls_111)) +
             geom_line(aes(y=y_cvd_hosp), color="black", size=.5)
 print(p)
 ```
+
 Actual data as a black line, 10 draws from the posterior shown. Some comments on how to read these tea leaves.  
 
 ### Cross validation
 
-
-
-
-
 ### SBC validation
-
-20 prior theta, 100 draws from each posterior, for each param, it should be uniform in it's rank
-
-.5 -> y, y -> theta_hat 100 draws
-
