@@ -1,14 +1,5 @@
 
 
-# ExampleCOVIDModel
-Example model that runs very simple COVID model
+Have a look at the website at:  https://codatmo.github.io/model_template/
 
-Suggested Structure
-
-/src
-
-/bin
-
-/doc
-
-/data
+It has pointers to this repo and all relevant info. 
