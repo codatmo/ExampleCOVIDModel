@@ -12,7 +12,7 @@ output:
 
 This document exists in the repository at [https://github.com/codatmo/model_template](https://github.com/codatmo/model_template) as `index.Rmd` and rendered in html as `index.html`. The releases can be downloaded at [https://github.com/codatmo/model_template/releases](https://github.com/codatmo/model_template/releases) which includes this file. 
 
-The goal of this model is to provide a template for reproducing COVID models in the CoDatMo framework. The model presented is a single parameter regression with artificial data. 
+The goal of this example model is to provide a template for reproducing COVID models in the CoDatMo framework. The model presented is a three parameter regression with artificial data. 
 
 ### Validation checklist items 
 
@@ -44,18 +44,21 @@ The model runs a simple linear regression with three parameters being estimated:
 
 $$
 y_n \sim \operatorname{normal}(\alpha + \beta X_n, \, \sigma) \\
-\alpha \sim \operatorname{normal}(0,1) \\
-\sigma \sim \operatorname{lognormal}(0,.5)
+\alpha \sim \operatorname{normal}(0,1000) \\
+\beta \sim \operatorname{half\_normal}(0,2) \\
+\sigma \sim \operatorname{normal}(500,300)
 $$
+
+The data is not centered or scaled for this example which leads to some oddly parameterized priors. This is not recommended practice but it helps keep the example simple.
 
 ## Data 
 
-The data are artificially generated with generating values drawn randomly from priors. The generating script is at `generate_data.R`. Usually we don't have access to generating parameters so we won't consider them here. Later we will generate data as part of model validation.
+The data are artificially generated with generating values drawn randomly from priors and resides in `data/data.R`. The generating script is at `generate_data.R`. The random seed should be removed or changed if the code is rerun with the expectation of getting different data. Usually we don't have access to generating parameters so we won't consider them here. Later we will generate data as part of model validation.
 
 ## Data generating process
 
 The data generating process is as follows: Person calls 111 reporting COVID symptoms as determined by the call center. We expect a baseline admission rate for COVID at hospitals and some percentage of the people who called will eventually be admitted to the hospital 14 days later. 
-```{r}
+```{r fig.height=1}
 library(dagitty)
 graph <- dagitty("dag {x_calls_111 -> y_cvd_hosp}")
 coordinates(graph) <- list(x=c(x_calls_111=1, y_cvd_hosp=2),
@@ -67,7 +70,7 @@ The above causal graph treats 111 calls as causal for hospital admissions which 
 
 Below the data are loaded.
 
-```{r}
+```{r comment=NA}
 source(file="data/data.R")
 # vars are: 'n_days_data','x_calls_111', 'y_cvd_hosp'
 data <- data.frame(x_calls_111, y_cvd_hosp)
@@ -87,8 +90,10 @@ The conversion to Stan input given the above data is as follows:
 
 ```{r echo=TRUE, message=FALSE, comment=NA}
 stan_data <- list(N=nrow(data), x_calls_111=data$x_calls_111, y_cvd_hosp=data$y_cvd_hosp,
-                  compute_likelihood=1, compute_prediction=1)
+                  compute_likelihood=1, compute_prediction=0)
 ```
+
+Note that the variables `compute_likelihood=` and `compute_prediction=` control Stan program execution with `1` meaning the relevant code is run and `0` meaning it will not be run. 
 
 ## Stan program
 
@@ -130,13 +135,13 @@ fit <- model$sample(data=stan_data, seed=999, chains=4)
 
 Viewing a text based summary of the fit:
 
-```{r}
+```{r comment=NA}
 fit$cmdstan_summary()
 ```
 
-Viewing the posteriors graphically yeilds:
+Viewing the posteriors graphically yeilds via the very useful `bayesplot` package:
 
-```{r echo=TRUE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 library(bayesplot)
 mcmc_hist(fit$draws(variables=c("sigma_sd", "beta_coef_111_call", "alpha_intercept")))
 ```
@@ -150,7 +155,7 @@ Below are the diagnostics used to help validate the model.
 
 There are standard diagnostics that look for errors in the posterior.
 
-```{r}
+```{r comment=NA}
 fit$cmdstan_diagnose()
 ```
 
@@ -161,16 +166,16 @@ fit$cmdstan_diagnose()
 
 ### Prior predictive check
 
-The prior predictive check estimates the model parameters without the likelihood being used. The resulting draws are then used to predict new data via predictive application of the likelihood given the draws $$ p(ysim|\alpha,\beta,\sigma) $$. Note that `compute_likelihood = 0` prevents the likelihood being computed in the model. 
+The prior predictive check estimates the model parameters without the likelihood being used. The resulting draws are then used to predict new data via predictive application of the likelihood given the draws. Note that `compute_likelihood = 0` prevents the likelihood being computed in the model. 
 
-```{r echo=TRUE, comment=NA}
+```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA}
 library(cmdstanr)
 library(rstan)
 library(ggplot2)
 library(bayesplot)
 library(tidyr)
 
-model <- cmdstan_model(file.path("stan","linear_regression.stan"))
+model <- cmdstan_model(file.path("stan", "linear_regression.stan"))
 stan_data <- list(N=100, x_calls_111=data$x_calls_111, y_cvd_hosp=y_cvd_hosp,
                   compute_likelihood=0, compute_prediction=1)
 
@@ -208,7 +213,7 @@ Actual data is plotted as a black line for context. At this point some comfortin
 
 ### Parameter recovery with simulated data
 
-Parameter recovery establishes that for some small set of values the model reasons properly. $$ p(\alpha',\beta',\sigma'|y\_sim) $$ We pick a draw from the above distributions, simulate data with it and then attempt to recover the parameters that we simulated with. We can look at the above graph and pick expected outliers or close to actual data. For this we pick 2959 as a middle-of-the-road example. 
+Parameter recovery establishes that for some small set of values the model reasons properly. We pick a draw from the above distributions, simulate data with it and then attempt to recover the parameters that we simulated with. We can look at the above graph and pick expected outliers or close to actual data. For this we pick 2959 as a middle-of-the-road example. 
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE, comment=NA}
 #Pick one arbitrary draw from the prior distribution
@@ -220,22 +225,23 @@ stan_data <- list(N=100,
 fit <- model$sample(data=stan_data, seed=999, chains=4)
 
 fit$cmdstan_summary()
-cat(sprintf("\nDraw number %d",draw))
-cat(sprintf("\nactual alpha_intercept=%.2f",rs_ex$alpha_intercept[draw]))
-cat(sprintf("\nactual beta_coef_111_call=%.2f",rs_ex$beta_coef_111_call[draw]))
-cat(sprintf("\nactual sigma_sd=%.2f",rs_ex$sigma_sd[draw]))
+report <- paste(sprintf("\nDraw number %d", draw),
+sprintf("actual alpha_intercept=%.2f", rs_ex$alpha_intercept[draw]),
+sprintf("actual beta_coef_111_call=%.2f", rs_ex$beta_coef_111_call[draw]),
+sprintf("actual sigma_sd=%.2f", rs_ex$sigma_sd[draw]), sep="\n")
+cat(report)
 
 ```
 
-All the parameters fit within the 2.5% to to 97.5% interval.
+The mean estimates for `alpha_intercept` and `sigma_sd` fit within the 5% to to 95% interval.The `beta_coef_111_call` is just outside the interval. 
 
 ### Posterior predictive check
 
 Like the prior predictive check but we include actual data in estimating the parameters. Note that both `compute_liklihood=1`,  `compute_prediction=1` and that the actual data is supplied in place of simlated data from above.
 
  
-```{r}
-stan_data <- list(N=100, x_calls_111=data$x_calls_111, y_cvd_hosp=y_cvd_hosp,
+```{r comment=NA}
+stan_data <- list(N=nrow(data), x_calls_111=data$x_calls_111, y_cvd_hosp=y_cvd_hosp,
                   compute_likelihood=1, compute_prediction=1)
 
 fit <- model$sample(data=stan_data, seed=999, chains=4)
@@ -256,8 +262,10 @@ p <- ggplot(data=p_long_data, aes(x=x_calls_111)) +
 print(p)
 ```
 
-Actual data as a black line, 10 draws from the posterior shown. Some comments on how to read these tea leaves.  
+Actual data as a black line, 10 draws from the posterior shown. Clearly data helps.  
 
 ### Cross validation
 
 ### SBC validation
+
+
