@@ -14,7 +14,7 @@ This document exists in the repository at [https://github.com/codatmo/model_temp
 
 The goal of this example model is to provide a template for reproducing COVID models in the CoDatMo framework. The model presented is a three parameter regression with artificial data. 
 
-This model is part of the CoDatMo (Co)vid (Dat)a (Mo)deling site (https://codatmo.github.io/) which is intended to replicate and make available important COVID models writting in Bayesian modeling languages like Stan. 
+This model is part of the CoDatMo (Co)vid (Dat)a (Mo)deling site (https://codatmo.github.io/) which is intended to replicate and make available important COVID models written in Bayesian modeling languages like Stan or PyMC3.
 
 ### Validation checklist items 
 
